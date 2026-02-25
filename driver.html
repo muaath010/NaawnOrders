@@ -24,11 +24,15 @@
 </div>
 
 <script>
+    // ⚠️ ضع الرابط الخاص بك هنا
     const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; 
+    
     const myPhone = localStorage.getItem("driverPhone");
     const myName = localStorage.getItem("driverName");
     const myIdCard = localStorage.getItem("driverIdCard"); 
-    const ADMIN_PHONE = "96893516953"; // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا (مثال: 96899999999)
+    
+    // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا (مثال: 96899999999)
+    const ADMIN_PHONE = "96893516953"; 
 
     let currentOrders = [];
 
@@ -52,7 +56,7 @@
                         ${notesHtml}
                         
                         <div class="grid-2" style="margin-top:15px;">
-                            <button onclick="acceptOrderAndNotify('${order.orderId}')"><i class="fa-solid fa-check"></i> استلام وإشعار الإدارة</button>
+                            <button onclick="acceptOrderAndNotify('${order.orderId}', this)"><i class="fa-solid fa-check"></i> استلام وإشعار الإدارة</button>
                             <button onclick="updateStatus('${order.orderId}', 'تم التوصيل')" style="background:#2ecc71;"><i class="fa-solid fa-flag-checkered"></i> تأكيد التسليم للعميل</button>
                         </div>
                     </div>`;
@@ -62,17 +66,33 @@
         });
     }
 
-    function acceptOrderAndNotify(orderId) {
+    // دالة استلام الطلب مع الحل الجذري للواتساب
+    function acceptOrderAndNotify(orderId, btnElement) {
         const targetOrder = currentOrders.find(o => o.orderId === orderId);
         const orderDetails = targetOrder ? targetOrder.details : "غير محدد";
+
+        // تغيير شكل الزر أثناء التحميل
+        const originalHtml = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الفتح...';
+        btnElement.disabled = true;
 
         fetch(API_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'المندوب في الطريق' })
         }).then(res => res.json()).then(data => {
             loadMyOrders(); 
+            
+            // تجهيز الرسالة
             const msg = encodeURIComponent(`🟢 مرحباً إدارة ناوون،\nأنا المندوب: *${myName}*\nرقم البطاقة: *${myIdCard}*\nلقد قمت باستلام الطلب رقم: *${orderId}*\n\n📦 *تفاصيل الطلب:*\n${orderDetails}\n\nوأنا الآن في طريقي لتنفيذه 🛵.`);
-            window.open(`https://wa.me/${ADMIN_PHONE}?text=${msg}`, '_blank');
+            
+            // فتح تطبيق الواتساب مباشرة في نفس الصفحة لتخطي حظر الهواتف
+            window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
+            
+        }).catch(err => {
+            alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
+            // إعادة الزر لحالته الطبيعية في حال الفشل
+            btnElement.innerHTML = originalHtml;
+            btnElement.disabled = false;
         });
     }
 
@@ -94,6 +114,7 @@
             }, 30000);
         }
     }
+    
     window.onload = () => { loadMyOrders(); startTracking(); };
 </script>
 </body>
