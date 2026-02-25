@@ -2,154 +2,56 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>إدارة نعاون</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نعاون - الإدارة</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="شعار نعاون">
+        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo">
         <h2 style="margin:0;">إدارة نعاون</h2>
     </div>
-    <button onclick="window.location.href='index.html'" style="width:auto; padding:8px 15px; background:var(--text-light); font-size:14px;"><i class="fa-solid fa-arrow-right-from-bracket"></i> خروج</button>
 </div>
-
 <div class="container">
-    <button id="notifyBtn" onclick="enableNotifications()" style="background: linear-gradient(135deg, #8e44ad, #9b59b6); margin-bottom: 15px; box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);">
-        <i class="fa-solid fa-bell-ring"></i> تفعيل التحديث التلقائي والإشعارات الصوتية
-    </button>
-    <button onclick="loadAdminData()"><i class="fa-solid fa-arrows-rotate"></i> تحديث يدوي للبيانات</button>
-
-    <h3 style="margin-top: 30px; color:var(--text-dark);"><i class="fa-solid fa-spinner fa-spin" style="color:var(--gold);"></i> الطلبات قيد الانتظار والنشطة</h3>
-    <div id="activeOrdersList"></div>
-    <hr>
-    <h3 style="color:var(--text-dark);"><i class="fa-solid fa-check-double" style="color:#2ecc71;"></i> السجل (الطلبات المكتملة)</h3>
-    <div id="completedOrdersList"></div>
+    <div id="adminOrders">جاري التحميل...</div>
 </div>
-
 <script>
-    // ⚠️ ضع الرابط الخاص بك هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbxzjgbvZWhp-YJTLU7Dut48grdZIzCAgXsTc5pS69wvJN8G7VYG_NPpyTxQkUNPkahd/exec"; 
-    
-    let activeDrivers = [];
-    let previousOrdersCount = 0;
-    let isAutoRefreshActive = false;
-    const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
+    const API_URL = "https://script.google.com/macros/s/AKfycbwmJKbtJ8shNL2a1epk1KVcdP_WNw37MMHsK-eGPDjlr_oj--vwLZmTnWFHh-7xVOcZ/exec"; 
+    let drivers = [];
 
-    function enableNotifications() {
-        alertSound.play().then(() => { alertSound.pause(); alertSound.currentTime = 0; }).catch(err => console.log("محظور مؤقتاً"));
-        document.getElementById('notifyBtn').style.display = 'none'; 
-        isAutoRefreshActive = true;
-
-        if (!("Notification" in window)) {
-            alert("⚠️ متصفحك الحالي لا يدعم الإشعارات المنبثقة. لكن التحديث التلقائي ورنة الصوت سيعملان!");
-            startAutoRefresh();
-        } else {
-            Notification.requestPermission().then(permission => {
-                if(permission === "granted") alert("✅ تم تفعيل الإشعارات والتحديث التلقائي بنجاح!");
-                else alert("❌ التحديث التلقائي سيعمل بصمت.");
-                startAutoRefresh();
-            }).catch(err => startAutoRefresh());
-        }
-    }
-
-    function startAutoRefresh() {
-        loadAdminData();
-        setInterval(checkNewOrdersInBackground, 20000);
-    }
-
-    function checkNewOrdersInBackground() {
-        fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => {
-            if(orders.length > previousOrdersCount && previousOrdersCount !== 0) {
-                alertSound.play().catch(e => console.log("الصوت محظور"));
-                if("Notification" in window && Notification.permission === "granted") {
-                    new Notification("فريق نعاون 🚀", { body: "يوجد طلب توصيل جديد بانتظار الإسناد!", icon: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" });
-                }
-            }
-            previousOrdersCount = orders.length;
-            fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
-                activeDrivers = drivers;
-                renderOrders(orders);
-            });
-        });
-    }
-
-    function loadAdminData() {
-        document.getElementById('activeOrdersList').innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> جاري جلب البيانات...</div>';
-        fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
-            activeDrivers = drivers;
-            fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => {
-                previousOrdersCount = orders.length; 
-                renderOrders(orders);
-            });
-        });
-    }
-
-    function renderOrders(orders) {
-        let activeHtml = '', completedHtml = '';
-        let driversOptions = '<option value="">اختر مندوباً متواجداً...</option>';
+    async function loadAdmin() {
+        const dRes = await fetch(API_URL + "?action=get_active_drivers");
+        drivers = await dRes.json();
+        const oRes = await fetch(API_URL + "?action=get_all_orders");
+        const orders = await oRes.json();
         
-        activeDrivers.forEach(d => { 
-            driversOptions += `<option value="${d.phone}|${d.name}">${d.name} (${d.phone}) - 📦 لديه ${d.activeOrders} طلبات نشطة</option>`; 
-        });
-
-        orders.reverse().forEach(order => {
-            const isCompleted = order.status === 'تم التوصيل';
-            let assignSection = '';
-            
-            if(!order.driverPhone && !isCompleted) {
-                assignSection = `
-                <div style="margin-top:15px; background:var(--bg-color); padding:15px; border-radius:10px; border:1px solid var(--border);">
-                    <select id="select-${order.orderId}" style="margin-top:0;">${driversOptions}</select>
-                    <button onclick="assignOrderToDriver('${order.orderId}')" style="padding:10px; font-size:14px; margin-bottom:0; background:#2980b9;">إسناد الطلب للمندوب</button>
+        let options = '<option value="">اختر مندوباً...</option>';
+        drivers.forEach(d => options += `<option value="${d.phone}|${d.name}">${d.name} (${d.activeOrders} طلبات)</option>`);
+        
+        let html = '';
+        orders.reverse().forEach(o => {
+            if(o.status !== 'تم التوصيل') {
+                html += `<div class="card">
+                    <h3>#${o.orderId} - ${o.status}</h3>
+                    <p>${o.details}</p>
+                    ${!o.driverPhone ? `<select id="s-${o.orderId}">${options}</select><button onclick="assign('${o.orderId}')">إسناد</button>` : `<p>المندوب: ${o.driverName}</p>`}
                 </div>`;
             }
-
-            let cleanPhone = order.customerPhone ? order.customerPhone.toString().replace(/\D/g, '') : '';
-            
-            const orderCard = `
-            <div class="card" style="border-right: 5px solid ${isCompleted ? '#2ecc71' : (order.driverPhone ? 'var(--gold)' : '#e74c3c')};">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <span class="status-badge ${isCompleted ? 'status-green' : (order.driverPhone ? 'status-gold' : '')}" style="${!isCompleted && !order.driverPhone ? 'background:#e74c3c;' : ''}">${order.status}</span>
-                    <strong style="font-size:16px;">#${order.orderId}</strong>
-                </div>
-                
-                <p><i class="fa-solid fa-map-location-dot" style="color:var(--text-light); width:20px;"></i> <strong>التفاصيل:</strong> ${order.details}</p>
-                <p><i class="fa-solid fa-motorcycle" style="color:var(--text-light); width:20px;"></i> <strong>المندوب:</strong> <span style="color:var(--text-dark); font-weight:bold;">${order.driverName || 'لم يتم التعيين'}</span></p>
-                <hr>
-                <p style="margin-bottom: 10px;"><i class="fa-solid fa-user" style="color:var(--text-light); width:20px;"></i> <strong>العميل:</strong> <span style="color:var(--text-dark); font-weight:bold;">${order.customerPhone}</span></p>
-                
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <a href="tel:${order.customerPhone}" style="flex: 1; text-align: center; padding: 10px; background: #3498db; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold;"><i class="fa-solid fa-phone"></i> اتصال</a>
-                    <a href="https://wa.me/${cleanPhone}" target="_blank" style="flex: 1; text-align: center; padding: 10px; background: #25D366; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold;"><i class="fa-brands fa-whatsapp"></i> واتساب</a>
-                </div>
-                ${assignSection}
-            </div>`;
-
-            if(isCompleted) completedHtml += orderCard; else activeHtml += orderCard;
         });
-
-        document.getElementById('activeOrdersList').innerHTML = activeHtml || '<div class="card" style="text-align:center;">لا توجد طلبات نشطة.</div>';
-        document.getElementById('completedOrdersList').innerHTML = completedHtml || '<div class="card" style="text-align:center;">لا توجد طلبات مكتملة.</div>';
+        document.getElementById('adminOrders').innerHTML = html;
     }
 
-    function assignOrderToDriver(orderId) {
-        const selectObj = document.getElementById(`select-${orderId}`).value;
-        if(!selectObj) return alert("الرجاء اختيار مندوب");
-        const [driverPhone, driverName] = selectObj.split('|');
-        const btn = event.target; btn.innerText = "جاري الإسناد...";
-        
-        fetch(API_URL, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'assign_order', 'orderId': orderId, 'driverPhone': driverPhone, 'driverName': driverName })
-        }).then(res => res.json()).then(data => {
-            alert('تم إسناد الطلب للمندوب بنجاح!'); loadAdminData();
+    async function assign(id) {
+        const val = document.getElementById('s-'+id).value;
+        if(!val) return;
+        const [p, n] = val.split('|');
+        await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({'action': 'assign_order', 'orderId': id, 'driverPhone': p, 'driverName': n})
         });
+        loadAdmin();
     }
-
-    window.onload = loadAdminData;
+    window.onload = loadAdmin;
 </script>
 </body>
 </html>
