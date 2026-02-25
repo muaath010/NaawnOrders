@@ -30,7 +30,7 @@
 </div>
 
 <script>
-    // ⚠️ ضع الرابط الخاص بك (API URL) هنا
+    // ⚠️ ضع الرابط الخاص بك هنا
     const API_URL = "https://script.google.com/macros/s/AKfycbzYutd3iFBNyRC8LDssIsaD0vofoNSGTxyPSZwC6QXi28-Y8YHy8jpHVV-i4U9u_Irr/exec"; 
     
     let activeDrivers = [];
@@ -65,7 +65,7 @@
             if(orders.length > previousOrdersCount && previousOrdersCount !== 0) {
                 alertSound.play().catch(e => console.log("الصوت محظور"));
                 if("Notification" in window && Notification.permission === "granted") {
-                    new Notification("فريق نعاون 🚀", { body: "يوجد طلب توصيل جديد بانتظار الإسناد!", icon: "https://cdn-icons-png.flaticon.com/512/3204/3204121.png" });
+                    new Notification("فريق نعاون 🚀", { body: "يوجد طلب توصيل جديد بانتظار الإسناد!", icon: "https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" });
                 }
             }
             previousOrdersCount = orders.length;
@@ -91,7 +91,6 @@
         let activeHtml = '', completedHtml = '';
         let driversOptions = '<option value="">اختر مندوباً متواجداً...</option>';
         
-        // التحديث: عرض عدد الطلبات النشطة لكل مندوب في القائمة المنسدلة
         activeDrivers.forEach(d => { 
             driversOptions += `<option value="${d.phone}|${d.name}">${d.name} (${d.phone}) - 📦 لديه ${d.activeOrders} طلبات نشطة</option>`; 
         });
