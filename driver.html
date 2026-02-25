@@ -1,36 +1,38 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>ناوون - بوابة المندوب</title>
+    <title>بوابة المندوب</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 <div class="navbar">
     <h2><i class="fa-solid fa-truck-fast"></i> تطبيق المندوب</h2>
+    <span id="driverNameDisplay" style="font-weight:bold;"></span>
 </div>
 
 <div class="container">
-    <div class="card">
-        <h3>تسجيل دخول المندوب</h3>
-        <input type="text" id="myPhone" placeholder="رقم هاتفك المسجل">
-        <input type="text" id="myName" placeholder="اسمك الكريم">
-        <button onclick="loadMyOrders()">عرض طلباتي</button>
+    <div class="card" style="text-align:center; background:#e0f2fe; border-color:#bae6fd;">
+        <i class="fa-solid fa-satellite-dish" style="color:#0ea5e9; font-size:24px;"></i>
+        <p style="margin:5px 0 0 0; color:#0369a1; font-weight:bold;">نظام التتبع (GPS) يعمل في الخلفية</p>
     </div>
 
-    <div id="myOrdersList"></div>
+    <h3>الطلبات المسندة إليك:</h3>
+    <div id="myOrdersList">جاري التحميل...</div>
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzcvnPtJDkmTANrU4Y6uDF8nY8-M6dMbocJaSK45EUFdakpttfr4i4KK5GHIidVqhRZ/exec"; 
-    const ADMIN_PHONE = "96800000000"; // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا مع رمز الدولة
+    const API_URL = "رابط_الـAPI_هنا"; // ⚠️ ضع الرابط هنا
+    const myPhone = localStorage.getItem("driverPhone");
+    const myName = localStorage.getItem("driverName");
+    const ADMIN_PHONE = "96800000000"; // رقم الإدارة
+
+    if(!myPhone) window.location.href = "index.html";
+    document.getElementById('driverNameDisplay').innerText = myName;
 
     function loadMyOrders() {
-        const phone = document.getElementById('myPhone').value;
-        const name = document.getElementById('myName').value;
-        if(!phone || !name) return alert("أدخل بياناتك كاملة");
-
-        fetch(API_URL + "?action=get_driver_orders&driverPhone=" + phone)
+        fetch(API_URL + "?action=get_driver_orders&driverPhone=" + myPhone)
         .then(res => res.json())
         .then(data => {
             let html = '';
@@ -38,40 +40,52 @@
                 if(order.status !== 'تم التوصيل') {
                     html += `
                     <div class="card">
-                        <span class="status-badge status-waiting">${order.status}</span>
+                        <span class="status-badge" style="background:#ef4444;">${order.status}</span>
                         <h3>طلب #${order.orderId}</h3>
-                        <p><i class="fa-solid fa-phone"></i> <strong>رقم الزبون:</strong> ${order.customerPhone}</p>
-                        <p><i class="fa-solid fa-map-location-dot"></i> <strong>التفاصيل:</strong> ${order.details}</p>
+                        <p><strong>رقم الزبون:</strong> <a href="tel:${order.customerPhone}">${order.customerPhone}</a></p>
+                        <p><strong>التفاصيل:</strong> ${order.details}</p>
                         
-                        <div class="grid-2">
-                            <button onclick="acceptOrder('${order.orderId}')"><i class="fa-solid fa-check"></i> استلمت الطلب</button>
-                            <button class="btn-whatsapp" onclick="notifyAdmin('${order.orderId}')"><i class="fa-brands fa-whatsapp"></i> إشعار الإدارة</button>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:15px;">
+                            <button onclick="updateStatus('${order.orderId}', 'المندوب في الطريق')" style="background:#3b82f6;">في الطريق</button>
+                            <button onclick="updateStatus('${order.orderId}', 'تم التوصيل')" style="background:#10b981;">تم التوصيل</button>
                         </div>
+                        <button onclick="notifyAdmin('${order.orderId}')" style="background:#25D366; margin-top:10px;"><i class="fa-brands fa-whatsapp"></i> واتساب للإدارة</button>
                     </div>`;
                 }
             });
-            document.getElementById('myOrdersList').innerHTML = html || '<h3 style="text-align:center;">لا توجد طلبات جديدة.</h3>';
+            document.getElementById('myOrdersList').innerHTML = html || '<h3>لا توجد طلبات جديدة.</h3>';
         });
     }
 
-    function acceptOrder(orderId) {
-        const phone = document.getElementById('myPhone').value;
-        const name = document.getElementById('myName').value;
+    function updateStatus(orderId, newStatus) {
+        if(newStatus === 'تم التوصيل' && !confirm('هل أنت متأكد من تسليم الطلب للعميل؟')) return;
         
         fetch(API_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'المندوب في الطريق', 'driverPhone': phone, 'driverName': name })
-        }).then(res => res.json()).then(data => {
-            alert('تم التحديث! الزبون الآن يرى أنك في الطريق.');
-            loadMyOrders();
-        });
+            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': newStatus })
+        }).then(res => res.json()).then(data => loadMyOrders());
     }
 
     function notifyAdmin(orderId) {
-        const name = document.getElementById('myName').value;
-        const msg = encodeURIComponent(`مرحباً إدارة ناوون، أنا المندوب ${name}. لقد استلمت الطلب رقم ${orderId} وأنا في طريقي للعميل.`);
+        const msg = encodeURIComponent(`أنا المندوب ${myName}، بخصوص الطلب ${orderId}`);
         window.open(`https://wa.me/${ADMIN_PHONE}?text=${msg}`, '_blank');
     }
+
+    // تشغيل التتبع في الخلفية كل 30 ثانية
+    function startTracking() {
+        if (navigator.geolocation) {
+            setInterval(() => {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    fetch(API_URL, {
+                        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ 'action': 'update_location', 'driverPhone': myPhone, 'lat': position.coords.latitude, 'lng': position.coords.longitude })
+                    });
+                }, (e) => console.log("GPS Error"), { enableHighAccuracy: true });
+            }, 30000); // 30 ثانية
+        }
+    }
+
+    window.onload = () => { loadMyOrders(); startTracking(); };
 </script>
 </body>
 </html>
