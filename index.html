@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ناوون لخدمات التوصيل - الدخول</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>ناوون لخدمات التوصيل</h1>
+    <h2>بوابة الدخول</h2>
+    
+    <label>صفتك في المنصة:</label>
+    <select id="userRole">
+        <option value="customer">عميل (طلب توصيل)</option>
+        <option value="driver">مندوب توصيل</option>
+        <option value="admin">الإدارة</option>
+    </select>
+    
+    <label>رقم الهاتف:</label>
+    <input type="text" id="phoneNumber" placeholder="أدخل رقم هاتفك (للمندوب والعميل)">
+    
+    <button onclick="login()">دخول للمنصة</button>
+</div>
+
+<script>
+    function login() {
+        const role = document.getElementById('userRole').value;
+        const phone = document.getElementById('phoneNumber').value;
+        
+        if (role !== 'admin' && !phone) {
+            alert('يرجى إدخال رقم الهاتف');
+            return;
+        }
+
+        // حفظ رقم الهاتف في المتصفح لاستخدامه في الصفحات الأخرى
+        localStorage.setItem("userPhone", phone);
+        
+        if (role === 'customer') window.location.href = 'customer.html';
+        else if (role === 'driver') window.location.href = 'driver.html';
+        else if (role === 'admin') window.location.href = 'admin.html';
+    }
+</script>
+
+</body>
+</html>
