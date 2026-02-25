@@ -56,27 +56,41 @@
     let driverMarker, trackingInterval;
     let carIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png', iconSize: [40, 40], iconAnchor: [20, 20] });
 
-    function submitOrder() {
+   function submitOrder() {
         const details = document.getElementById('orderDetails').value;
         if(!details) return alert("الرجاء كتابة تفاصيل الطلب");
         
         const btn = event.target; 
         const originalText = btn.innerText;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحويل للواتساب...'; 
+        btn.innerHTML = '<i class="fa-solid fa-rocket"></i> جاري التحويل فوراً...'; 
         btn.disabled = true;
-        
-        fetch(API_URL, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': myPhone, 'details': details })
-        }).then(res => res.json()).then(data => {
-            document.getElementById('trackId').value = data.orderId;
-            document.getElementById('orderDetails').value = '';
-            btn.innerHTML = originalText; btn.disabled = false;
 
-            // تغيير النص ليتوافق مع نعاون
-            const msg = encodeURIComponent(`🟢 مرحباً نعاون، لدي طلب توصيل جديد!\n\n📞 رقمي: *${myPhone}*\n🔖 رقم الطلب: *${data.orderId}*\n📦 التفاصيل:\n${details}\n\nأرجو إسناده لأقرب مندوب 🛵.`);
-            window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
-        }).catch(() => {
+        // 1. توليد رقم الطلب فوراً وبسرعة البرق في هاتف العميل
+        const instantOrderId = "NWN-" + Math.floor(Math.random() * 100000);
+        
+        // 2. إرسال الطلب إلى جوجل شيت في الخلفية (بدون انتظار الرد!)
+        fetch(API_URL, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 
+                'action': 'create_order', 
+                'customerPhone': myPhone, 
+                'details': details,
+                'orderId': instantOrderId // نرسل الرقم الجاهز
+            }),
+            keepalive: true // سحر برمجي يضمن إرسال البيانات حتى لو خرج العميل من الصفحة
+        }).catch(err => console.log("تم الإرسال في الخلفية"));
+
+        // 3. تحديث شاشة العميل فوراً وعرض رقم التتبع
+        document.getElementById('trackId').value = instantOrderId;
+        document.getElementById('orderDetails').value = '';
+        btn.innerHTML = originalText; 
+        btn.disabled = false;
+
+        // 4. القفز إلى الواتساب في نفس اللحظة (بصفر ثانية تأخير)
+        const msg = encodeURIComponent(`🟢 مرحباً نعاون، لدي طلب توصيل جديد!\n\n📞 رقمي: *${myPhone}*\n🔖 رقم الطلب: *${instantOrderId}*\n📦 التفاصيل:\n${details}\n\nأرجو إسناده لأقرب مندوب 🛵.`);
+        window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
+    }.catch(() => {
             alert("حدث خطأ في الاتصال بالخادم.");
             btn.innerHTML = originalText; btn.disabled = false;
         });
