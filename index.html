@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نعاون للتوصيل</title>
+    <title>نعاون - تسجيل الدخول</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -13,14 +13,25 @@
         .form-section { display: none; animation: fadeIn 0.4s; }
         .form-section.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* شعار نعاون الدائري النابض */
+        .pulsing-logo {
+            width: 90px; height: 90px; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--gold); animation: pulse-animation 2s infinite; margin-bottom: 15px;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(212, 175, 55, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
+        }
     </style>
 </head>
 <body>
 <div class="container" style="max-width: 400px; margin-top: 5vh;">
-    <div align="center" style="margin-bottom: 30px;">
-        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="شعار نعاون" style="width: 85px; height: 85px; margin-bottom:15px; border-width: 3px;">
+    <div align="center">
+        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="نعاون">
         <h1 style="margin: 0; color: var(--text-dark);">نعاون للتوصيل</h1>
-        <p style="color: var(--text-light); margin: 5px 0;">المنصة الذكية للإدارة اللوجستية</p>
+        <p style="color: var(--text-light); margin-bottom: 25px;">سرعة، أمان، واحترافية</p>
     </div>
     
     <div class="card">
@@ -31,65 +42,77 @@
         </div>
 
         <div id="customer" class="form-section active">
-            <input type="tel" id="c_phone" placeholder="رقم هاتفك (للتواصل السريع)">
-            <button onclick="loginCustomer()"><i class="fa-solid fa-arrow-left"></i> الدخول كعميل</button>
+            <input type="tel" id="c_phone" placeholder="رقم هاتفك">
+            <button onclick="loginCustomer()">دخول سريع <i class="fa-solid fa-arrow-left"></i></button>
         </div>
 
         <div id="driver" class="form-section">
             <input type="text" id="d_user" placeholder="اسم المستخدم">
             <input type="number" id="d_id" placeholder="رقم البطاقة">
             <input type="password" id="d_pass" placeholder="كلمة المرور">
-            <button onclick="loginDriver()"><i class="fa-solid fa-motorcycle"></i> دخول المندوب</button>
+            <button id="dBtn" onclick="loginDriver()"><i class="fa-solid fa-motorcycle"></i> دخول المندوب</button>
         </div>
 
         <div id="admin" class="form-section">
-            <input type="text" id="a_user" placeholder="اسم المستخدم">
+            <input type="text" id="a_user" placeholder="اسم الإدارة">
             <input type="password" id="a_pass" placeholder="كلمة المرور">
-            <button onclick="loginAdmin()"><i class="fa-solid fa-user-tie"></i> دخول الإدارة</button>
+            <button id="aBtn" onclick="loginAdmin()"><i class="fa-solid fa-user-tie"></i> دخول الإدارة</button>
         </div>
     </div>
 </div>
 
 <script>
-    // ⚠️ ضع الرابط الخاص بك هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbzOjOyBqgwFJRdneC14hl5eoCLCA390Ompj56PzbwzeRo40lHV0gCUjrq66KuYX4FAg/exec"; 
+    // ⚠️ ضع رابط السكريبت الخاص بك هنا
+    const API_URL = "https://script.google.com/macros/s/AKfycbxzjgbvZWhp-YJTLU7Dut48grdZIzCAgXsTc5pS69wvJN8G7VYG_NPpyTxQkUNPkahd/exec"; 
 
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
-        event.target.classList.add('active');
+        event.currentTarget.classList.add('active');
         document.getElementById(tabId).classList.add('active');
     }
 
     function loginCustomer() {
-        localStorage.setItem("customerPhone", document.getElementById('c_phone').value || 'عميل ضيف');
+        const p = document.getElementById('c_phone').value;
+        if(!p) return alert("أدخل رقمك");
+        localStorage.setItem("customerPhone", p);
         window.location.href = "customer.html";
     }
 
-    function loginDriver() {
-        const btn = event.target; btn.innerText = "جاري التحقق...";
-        fetch(API_URL, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'login_driver', 'username': document.getElementById('d_user').value, 'idCard': document.getElementById('d_id').value, 'password': document.getElementById('d_pass').value })
-        }).then(res => res.json()).then(data => {
+    async function loginDriver() {
+        const btn = document.getElementById('dBtn');
+        const user = document.getElementById('d_user').value;
+        const id = document.getElementById('d_id').value;
+        const pass = document.getElementById('d_pass').value;
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({'action': 'login_driver', 'username': user, 'idCard': id, 'password': pass})
+            });
+            const data = await res.json();
             if(data.status === "success") {
                 localStorage.setItem("driverPhone", data.phone); 
                 localStorage.setItem("driverName", data.name);
-                localStorage.setItem("driverIdCard", document.getElementById('d_id').value);
                 window.location.href = "driver.html";
-            } else { alert(data.message); btn.innerText = "دخول المندوب"; }
-        });
+            } else { alert(data.message); btn.innerHTML = '<i class="fa-solid fa-motorcycle"></i> دخول المندوب'; btn.disabled = false; }
+        } catch(e) { alert("خطأ في الشبكة"); btn.disabled = false; }
     }
 
-    function loginAdmin() {
-        const btn = event.target; btn.innerText = "جاري التحقق...";
-        fetch(API_URL, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'login_admin', 'username': document.getElementById('a_user').value, 'password': document.getElementById('a_pass').value })
-        }).then(res => res.json()).then(data => {
-            if(data.status === "success") window.location.href = "admin.html";
-            else { alert(data.message); btn.innerText = "دخول الإدارة"; }
+    async function loginAdmin() {
+        const btn = document.getElementById('aBtn');
+        btn.innerHTML = 'جاري الدخول...';
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({'action': 'login_admin', 'username': document.getElementById('a_user').value, 'password': document.getElementById('a_pass').value})
         });
+        const data = await res.json();
+        if(data.status === "success") window.location.href = "admin.html"; else alert("خطأ في البيانات");
     }
 </script>
 </body>
