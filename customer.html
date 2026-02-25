@@ -8,7 +8,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <style> #map { height: 250px; border-radius: 12px; margin-top: 15px; border: 2px solid var(--gold); z-index: 1;} </style>
+    <style> 
+        #map { height: 250px; border-radius: 12px; margin-top: 15px; border: 2px solid var(--gold); z-index: 1;} 
+    </style>
 </head>
 <body>
 <div class="navbar">
@@ -20,7 +22,7 @@
     <div class="card">
         <h3><i class="fa-solid fa-box-open" style="color:var(--gold);"></i> طلب توصيل جديد</h3>
         <textarea id="orderDetails" rows="4" placeholder="اكتب تفاصيل الطلب، ومكان الاستلام والتسليم..."></textarea>
-        <button onclick="submitOrder()">تأكيد وإرسال الطلب</button>
+        <button onclick="submitOrder()">تأكيد وإرسال الطلب للإدارة</button>
     </div>
 
     <div class="card">
@@ -42,33 +44,63 @@
 </div>
 
 <script>
+    // ⚠️ 1. ضع رابط قاعدة البيانات (API URL) الخاص بك هنا
     const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; 
+    
+    // ⚠️ 2. ضع رقم الواتساب الخاص بالإدارة هنا (لاستقبال تنبيهات الطلبات الجديدة)
+    const ADMIN_PHONE = "96893516953"; 
+    
+    // جلب رقم العميل من الذاكرة
     const myPhone = localStorage.getItem("customerPhone");
 
+    // تهيئة الخريطة (متمركزة على إحداثيات ولاية عبري)
     let map = L.map('map').setView([23.2292, 56.5167], 13); 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     let driverMarker, trackingInterval;
-    let carIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png', iconSize: [40, 40], iconAnchor: [20, 20] });
+    
+    // أيقونة سيارة التوصيل
+    let carIcon = L.icon({ 
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png', 
+        iconSize: [40, 40], 
+        iconAnchor: [20, 20] 
+    });
 
+    // دالة إرسال الطلب وتوجيه العميل للواتساب (الحل الذكي للإشعارات)
     function submitOrder() {
         const details = document.getElementById('orderDetails').value;
         if(!details) return alert("الرجاء كتابة تفاصيل الطلب");
-        const btn = event.target; btn.innerText = "جاري الإرسال..."; btn.disabled = true;
         
+        const btn = event.target; 
+        const originalText = btn.innerText;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحويل للواتساب...'; 
+        btn.disabled = true;
+        
+        // 1. تسجيل الطلب في جوجل شيت بصمت
         fetch(API_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': myPhone, 'details': details })
         }).then(res => res.json()).then(data => {
-            alert('تم استلام طلبك! رقم التتبع: ' + data.orderId);
+            
+            // 2. عرض رقم التتبع للعميل في الشاشة وتفريغ المربع
             document.getElementById('trackId').value = data.orderId;
             document.getElementById('orderDetails').value = '';
-            btn.innerText = "تأكيد وإرسال الطلب"; btn.disabled = false;
+            btn.innerHTML = originalText; 
+            btn.disabled = false;
+
+            // 3. تجهيز رسالة الواتساب التي سيرسلها العميل للإدارة
+            const msg = encodeURIComponent(`🟢 مرحباً ناوون، لدي طلب توصيل جديد!\n\n📞 رقمي: *${myPhone}*\n🔖 رقم الطلب: *${data.orderId}*\n📦 التفاصيل:\n${details}\n\nأرجو إسناده لأقرب مندوب 🛵.`);
+            
+            // 4. فتح واتساب العميل وتوجيهه لمحادثة الإدارة فوراً
+            window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
+
         }).catch(() => {
             alert("حدث خطأ في الاتصال بالخادم.");
-            btn.innerText = "تأكيد وإرسال الطلب"; btn.disabled = false;
+            btn.innerHTML = originalText; 
+            btn.disabled = false;
         });
     }
 
+    // دوال التتبع الحي للخريطة
     function startLiveTracking() {
         const orderId = document.getElementById('trackId').value;
         if(!orderId) return alert("أدخل رقم الطلب");
@@ -82,21 +114,28 @@
         fetch(API_URL + "?action=track_order&orderId=" + orderId).then(res => res.json()).then(data => {
             if(data.status === "success") {
                 document.getElementById('resStatus').innerText = data.orderStatus;
-                document.getElementById('resName').innerText = data.driverName || 'جاري البحث عن مندوب...';
+                document.getElementById('resName').innerText = data.driverName || 'بانتظار الإدارة...';
                 
                 if(data.orderStatus === "تم التوصيل") {
                     document.getElementById('resStatus').className = "status-badge status-green";
                     clearInterval(trackingInterval);
                 }
+                
+                // تحديث موقع السيارة في الخريطة
                 if(data.lat && data.lng) {
                     const latLng = [parseFloat(data.lat), parseFloat(data.lng)];
-                    if(!driverMarker) { driverMarker = L.marker(latLng, {icon: carIcon}).addTo(map).bindPopup("المندوب"); map.setView(latLng, 15); } 
-                    else { driverMarker.setLatLng(latLng); }
+                    if(!driverMarker) { 
+                        driverMarker = L.marker(latLng, {icon: carIcon}).addTo(map).bindPopup("المندوب"); 
+                        map.setView(latLng, 15); 
+                    } else { 
+                        driverMarker.setLatLng(latLng); 
+                    }
                 }
             }
         });
     }
 
+    // دالة إرسال ملاحظة للمندوب
     function sendNote() {
         const orderId = document.getElementById('trackId').value;
         const note = document.getElementById('customerNote').value;
