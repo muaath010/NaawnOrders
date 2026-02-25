@@ -2,54 +2,83 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>ناوون - لوحة الإدارة</title>
+    <title>ناوون - لوحة الإدارة الاحترافية</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-<div class="container" style="max-width: 800px;">
-    <h1>إدارة عمليات التوصيل</h1>
-    <button onclick="loadOrders()" style="background-color: #2c3e50;">تحديث قائمة الطلبات</button>
-    <div id="ordersList" style="margin-top: 20px;"></div>
+<div class="navbar">
+    <h2><i class="fa-solid fa-user-tie"></i> إدارة ناوون</h2>
+    <button onclick="window.location.href='index.html'" style="width:auto; padding:8px 15px; background:#e74c3c; font-size: 14px;">خروج</button>
+</div>
+
+<div class="container">
+    <div class="card" style="text-align: center;">
+        <h3 style="margin-top:0;"><i class="fa-solid fa-chart-line"></i> لوحة التحكم الشاملة</h3>
+        <button onclick="loadAdminOrders()" style="background-color: #2c3e50;"><i class="fa-solid fa-arrows-rotate"></i> تحديث وعرض البيانات</button>
+    </div>
+
+    <h3 style="color: #d35400; border-bottom: 2px solid #d35400; padding-bottom: 10px;"><i class="fa-solid fa-spinner fa-spin"></i> الطلبات النشطة (قيد التنفيذ)</h3>
+    <div id="activeOrdersList"></div>
+
+    <hr style="margin: 40px 0; border: 0; border-top: 2px dashed #ccc;">
+
+    <h3 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px;"><i class="fa-solid fa-check-double"></i> الطلبات المكتملة (السجل)</h3>
+    <div id="completedOrdersList"></div>
 </div>
 
 <script>
-    // ⚠️ ضع الرابط الذي نسخته من جوجل سكريبت هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbzk9hOYCcfXaEg4JB-VVqxOdSaPiLkK8V0ZHP-A27XuSXtFKPQqm8BV3lk1fslGqoPB/exec"; 
+    // تم وضع رابطك الجديد هنا تلقائياً
+    const API_URL = "https://script.google.com/macros/s/AKfycbzcvnPtJDkmTANrU4Y6uDF8nY8-M6dMbocJaSK45EUFdakpttfr4i4KK5GHIidVqhRZ/exec";
 
-    function loadOrders() {
-        document.getElementById('ordersList').innerHTML = '<h2>جاري جلب الطلبات...</h2>';
+    function loadAdminOrders() {
+        document.getElementById('activeOrdersList').innerHTML = '<p style="text-align:center;">جاري جلب البيانات من الخادم...</p>';
+        document.getElementById('completedOrdersList').innerHTML = '<p style="text-align:center;">جاري جلب البيانات من الخادم...</p>';
+
         fetch(API_URL + "?action=get_all_orders")
         .then(res => res.json())
         .then(data => {
-            let html = '';
-            // عرض الطلبات من الأحدث للأقدم
+            let activeHtml = '';
+            let completedHtml = '';
+
+            // عكس الترتيب لتظهر الطلبات الأحدث في الأعلى
             data.reverse().forEach(order => {
-                html += `
-                <div class="card">
-                    <h3>طلب #${order.orderId} <span class="status-badge">${order.status}</span></h3>
-                    <p><strong>رقم الزبون:</strong> ${order.customerPhone}</p>
-                    <p><strong>التفاصيل:</strong> ${order.details}</p>
-                    <input type="text" id="driver-${order.orderId}" placeholder="رقم هاتف المندوب" value="${order.driverPhone !== 'غير محدد' ? order.driverPhone : ''}">
-                    <button onclick="assignDriver('${order.orderId}')">تحديث وتعيين للمندوب</button>
+                const isCompleted = order.status === 'تم التوصيل';
+                const badgeClass = isCompleted ? 'status-completed' : 'status-waiting';
+                
+                // تصميم بطاقة الطلب
+                const orderCard = `
+                <div class="card" style="border-right: 5px solid ${isCompleted ? '#10b981' : '#f59e0b'};">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                        <span class="status-badge ${badgeClass}">${order.status}</span>
+                        <strong style="font-size:18px; color:#2c3e50;">#${order.orderId}</strong>
+                    </div>
+                    <p><i class="fa-solid fa-phone" style="color:#7f8c8d; width:20px;"></i> <strong>العميل:</strong> <a href="tel:${order.customerPhone}" style="color:#2980b9; text-decoration:none;">${order.customerPhone}</a></p>
+                    <p><i class="fa-solid fa-map-location-dot" style="color:#7f8c8d; width:20px;"></i> <strong>التفاصيل:</strong> ${order.details}</p>
+                    <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+                    <p><i class="fa-solid fa-motorcycle" style="color:#7f8c8d; width:20px;"></i> <strong>المندوب:</strong> <span style="color:#d35400; font-weight:bold;">${order.driverName || 'لم يستلم أحد بعد'}</span> <span style="font-size:14px; color:#95a5a6;">(${order.driverPhone || '-'})</span></p>
+                    <p style="font-size:12px; color:#bdc3c7; margin-top:15px;"><i class="fa-regular fa-clock"></i> ${new Date(order.date).toLocaleString('ar-OM')}</p>
                 </div>`;
+
+                // فرز الطلبات للقسم المناسب
+                if(isCompleted) {
+                    completedHtml += orderCard;
+                } else {
+                    activeHtml += orderCard;
+                }
             });
-            document.getElementById('ordersList').innerHTML = html || '<p>لا توجد طلبات مسجلة.</p>';
+
+            document.getElementById('activeOrdersList').innerHTML = activeHtml || '<div class="card"><p style="text-align:center;">لا توجد طلبات نشطة حالياً.</p></div>';
+            document.getElementById('completedOrdersList').innerHTML = completedHtml || '<div class="card"><p style="text-align:center;">لا توجد طلبات مكتملة في السجل.</p></div>';
+        })
+        .catch(error => {
+            alert('حدث خطأ في الاتصال بقاعدة البيانات. تأكد من إعدادات جوجل شيت.');
+            console.error(error);
         });
     }
 
-    function assignDriver(orderId) {
-        const driverPhone = document.getElementById(`driver-${orderId}`).value;
-        fetch(API_URL, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'جاري التوصيل', 'driverPhone': driverPhone })
-        }).then(res => res.json()).then(data => {
-            alert('تم إسناد الطلب للمندوب بنجاح!');
-            loadOrders();
-        });
-    }
-    
-    window.onload = loadOrders;
+    // تحميل البيانات تلقائياً عند فتح الصفحة
+    window.onload = loadAdminOrders;
 </script>
 </body>
 </html>
