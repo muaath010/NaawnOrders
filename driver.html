@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>ناوون - بوابة المندوب</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h2>الطلبات المسندة إليك</h2>
+    <div id="myOrdersList">جاري التحميل...</div>
+</div>
+
+<script>
+    // ⚠️ ضع الرابط الذي نسخته من جوجل سكريبت هنا
+    const API_URL = "ضع_رابط_جوجل_سكريبت_هنا"; 
+    const myPhone = localStorage.getItem("userPhone");
+
+    function loadMyOrders() {
+        fetch(API_URL + "?action=get_driver_orders&driverPhone=" + myPhone)
+        .then(res => res.json())
+        .then(data => {
+            let html = '';
+            data.forEach(order => {
+                // نعرض للمندوب الطلبات التي لم تكتمل فقط
+                if(order.status !== 'تم التوصيل') {
+                    html += `
+                    <div class="card">
+                        <h3>طلب #${order.orderId}</h3>
+                        <p><strong>رقم الزبون:</strong> ${order.customerPhone}</p>
+                        <p><strong>التفاصيل:</strong> ${order.details}</p>
+                        <button onclick="completeOrder('${order.orderId}')" style="background-color:#27ae60;">تأكيد إتمام التوصيل</button>
+                    </div>`;
+                }
+            });
+            document.getElementById('myOrdersList').innerHTML = html || '<h3>لا توجد طلبات مسندة إليك حالياً.</h3>';
+        });
+    }
+
+    function completeOrder(orderId) {
+        if(!confirm('هل أنت متأكد أنك قمت بتوصيل الطلب للعميل؟')) return;
+        
+        fetch(API_URL, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'تم التوصيل' })
+        }).then(res => res.json()).then(data => {
+            alert('تم تأكيد التوصيل، شكراً لجهودك!');
+            loadMyOrders();
+        });
+    }
+
+    window.onload = loadMyOrders;
+</script>
+</body>
+</html>
