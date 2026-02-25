@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>ناوون - بوابة العميل</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h2>تقديم طلب توصيل جديد</h2>
+    
+    <label>تفاصيل الطلب وموقع الاستلام والتسليم:</label>
+    <textarea id="orderDetails" rows="4" placeholder="مثال: استلام طلبية من مطعم كذا وتوصيلها إلى حي كذا..."></textarea>
+    
+    <button onclick="submitOrder()">تأكيد وإرسال الطلب</button>
+    <br><br>
+    <button onclick="window.location.href='index.html'" style="background-color: #95a5a6;">عودة للرئيسية</button>
+</div>
+
+<script>
+    // ⚠️ ضع الرابط الذي نسخته من جوجل سكريبت هنا
+    const API_URL = "ضع_رابط_جوجل_سكريبت_هنا"; 
+    const myPhone = localStorage.getItem("userPhone");
+
+    function submitOrder() {
+        const details = document.getElementById('orderDetails').value;
+        if(!details) { alert("يرجى كتابة التفاصيل"); return; }
+        
+        document.querySelector('button').innerText = "جاري الإرسال...";
+        
+        fetch(API_URL, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': myPhone, 'details': details })
+        }).then(res => res.json()).then(data => {
+            alert('تم تسجيل طلبك بنجاح! رقم الطلب: ' + data.orderId);
+            document.getElementById('orderDetails').value = '';
+            document.querySelector('button').innerText = "تأكيد وإرسال الطلب";
+        }).catch(err => alert("حدث خطأ في الاتصال"));
+    }
+</script>
+</body>
+</html>
