@@ -14,7 +14,12 @@
 </div>
 
 <div class="container">
-    <button onclick="loadAdminData()"><i class="fa-solid fa-arrows-rotate"></i> تحديث لوحة التحكم</button>
+    
+    <button id="notifyBtn" onclick="enableNotifications()" style="background: linear-gradient(135deg, #8e44ad, #9b59b6); margin-bottom: 15px; box-shadow: 0 4px 15px rgba(142, 68, 173, 0.4);">
+        <i class="fa-solid fa-bell-ring"></i> تفعيل التحديث التلقائي والإشعارات الصوتية
+    </button>
+
+    <button onclick="loadAdminData()"><i class="fa-solid fa-arrows-rotate"></i> تحديث يدوي</button>
 
     <h3 style="margin-top: 30px; color:var(--text-dark);"><i class="fa-solid fa-spinner fa-spin" style="color:var(--gold);"></i> الطلبات قيد الانتظار والنشطة</h3>
     <div id="activeOrdersList"></div>
@@ -26,14 +31,73 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; // ⚠️ لا تنسَ وضع رابطك
+    
     let activeDrivers = [];
+    let previousOrdersCount = 0; // لحفظ عدد الطلبات السابقة ومقارنتها
+    let isAutoRefreshActive = false;
+    
+    // صوت التنبيه عند وصول طلب (يمكنك تغييره لاحقاً بأي رابط صوت)
+    const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
+    // دالة تفعيل الإشعارات (يجب أن يضغط عليها المدير أول مرة)
+    function enableNotifications() {
+        Notification.requestPermission().then(permission => {
+            if(permission === "granted") {
+                document.getElementById('notifyBtn').style.display = 'none'; // إخفاء الزر بعد التفعيل
+                isAutoRefreshActive = true;
+                
+                // تشغيل الصوت بصمت لفك حظر المتصفح
+                alertSound.play().then(() => {
+                    alertSound.pause();
+                    alertSound.currentTime = 0;
+                }).catch(err => console.log("تم تفعيل الصوت"));
+
+                alert("✅ تم تفعيل الإشعارات الصوتية والتحديث التلقائي بنجاح! سيتم فحص الطلبات كل 20 ثانية.");
+                
+                loadAdminData(); // تحميل أولي
+                setInterval(checkNewOrdersInBackground, 20000); // فحص كل 20 ثانية
+            } else {
+                alert("❌ يرجى السماح بعرض الإشعارات من إعدادات المتصفح لكي تعمل الميزة.");
+            }
+        });
+    }
+
+    // الفحص في الخلفية بدون تغيير شكل الصفحة لكي لا يزعج الإدارة
+    function checkNewOrdersInBackground() {
+        fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => {
+            // إذا كان عدد الطلبات الجديدة أكبر من العدد القديم
+            if(orders.length > previousOrdersCount && previousOrdersCount !== 0) {
+                // 1. تشغيل رنة التنبيه
+                alertSound.play().catch(e => console.log("خطأ في تشغيل الصوت"));
+                
+                // 2. إرسال إشعار لشاشة الهاتف/الكمبيوتر
+                if(Notification.permission === "granted") {
+                    new Notification("ناوون للتوصيل 🚀", {
+                        body: "يوجد طلب توصيل جديد بانتظار الإسناد للمندوب!",
+                        icon: "https://cdn-icons-png.flaticon.com/512/3204/3204121.png"
+                    });
+                }
+            }
+            
+            // تحديث العدد وتحديث القائمة الصامت
+            previousOrdersCount = orders.length;
+            fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
+                activeDrivers = drivers;
+                renderOrders(orders);
+            });
+        }).catch(err => console.log("خطأ في جلب البيانات الخلفية"));
+    }
+
+    // دالة التحميل اليدوية (عند فتح الصفحة أو الضغط على زر التحديث)
     function loadAdminData() {
-        document.getElementById('activeOrdersList').innerHTML = 'جاري التحميل...';
+        document.getElementById('activeOrdersList').innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> جاري جلب البيانات...</div>';
         fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
             activeDrivers = drivers;
-            fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => renderOrders(orders));
+            fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => {
+                previousOrdersCount = orders.length; // تسجيل العدد الحالي كخط الأساس
+                renderOrders(orders);
+            });
         });
     }
 
@@ -50,7 +114,7 @@
                 assignSection = `
                 <div style="margin-top:15px; background:var(--bg-color); padding:15px; border-radius:10px; border:1px solid var(--border);">
                     <select id="select-${order.orderId}" style="margin-top:0;">${driversOptions}</select>
-                    <button onclick="assignOrderToDriver('${order.orderId}')" style="padding:10px; font-size:14px; margin-bottom:0;">إسناد الطلب للمندوب</button>
+                    <button onclick="assignOrderToDriver('${order.orderId}')" style="padding:10px; font-size:14px; margin-bottom:0; background:#2980b9;">إسناد الطلب للمندوب</button>
                 </div>`;
             }
 
@@ -59,7 +123,7 @@
             const orderCard = `
             <div class="card" style="border-right: 5px solid ${isCompleted ? '#2ecc71' : (order.driverPhone ? 'var(--gold)' : '#e74c3c')};">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <span class="status-badge ${isCompleted ? 'status-green' : 'status-gold'}">${order.status}</span>
+                    <span class="status-badge ${isCompleted ? 'status-green' : (order.driverPhone ? 'status-gold' : '')}" style="${!isCompleted && !order.driverPhone ? 'background:#e74c3c;' : ''}">${order.status}</span>
                     <strong style="font-size:16px;">#${order.orderId}</strong>
                 </div>
                 
