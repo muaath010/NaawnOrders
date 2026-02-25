@@ -2,133 +2,43 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نعاون - بوابة العميل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نعاون - العميل</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <style> 
-        #map { height: 250px; border-radius: 12px; margin-top: 15px; border: 2px solid var(--gold); z-index: 1;} 
-    </style>
 </head>
 <body>
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="نعاون">
+        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo">
         <h2 style="margin:0;">نعاون</h2>
     </div>
     <span>بوابة العملاء</span>
 </div>
-
-<div class="container grid-2">
+<div class="container">
     <div class="card">
-        <h3><i class="fa-solid fa-box-open" style="color:var(--gold);"></i> طلب توصيل جديد</h3>
-        <textarea id="orderDetails" rows="4" placeholder="اكتب تفاصيل الطلب، ومكان الاستلام والتسليم..."></textarea>
-        <button onclick="submitOrder()">تأكيد وإرسال الطلب</button>
-    </div>
-
-    <div class="card">
-        <h3><i class="fa-solid fa-location-crosshairs" style="color:var(--gold);"></i> التتبع المباشر</h3>
-        <input type="text" id="trackId" placeholder="رقم الطلب (مثال: NWN-1234)">
-        <button onclick="startLiveTracking()" class="btn-outline">تتبع الآن</button>
-        
-        <div id="trackResult" style="display:none; margin-top: 20px;">
-            <div style="background: var(--bg-color); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
-                <p><strong>الحالة:</strong> <span id="resStatus" class="status-badge status-gold"></span></p>
-                <p><strong>المندوب:</strong> <span id="resName" style="color:var(--gold); font-weight:bold;"></span></p>
-                <hr>
-                <input type="text" id="customerNote" placeholder="أرسل ملاحظة للمندوب">
-                <button onclick="sendNote()" style="padding:10px; font-size:14px;"><i class="fa-regular fa-paper-plane"></i> إرسال</button>
-            </div>
-            <div id="map"></div>
-        </div>
+        <h3>طلب جديد</h3>
+        <textarea id="orderDetails" rows="4" placeholder="اكتب تفاصيل الطلب..."></textarea>
+        <button id="sBtn" onclick="submitOrder()">تأكيد وإرسال الطلب</button>
     </div>
 </div>
-
 <script>
-    // ⚠️ ضع بياناتك هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbxzjgbvZWhp-YJTLU7Dut48grdZIzCAgXsTc5pS69wvJN8G7VYG_NPpyTxQkUNPkahd/exec"; 
-    const ADMIN_PHONE = "96893516953"; 
+    const API_URL = "ضع_رابط_جوجل_سكريبت_هنا"; 
+    const ADMIN_PHONE = "96800000000"; 
     
-    const myPhone = localStorage.getItem("customerPhone");
-    let map = L.map('map').setView([23.2292, 56.5167], 13); 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    let driverMarker, trackingInterval;
-    let carIcon = L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png', iconSize: [40, 40], iconAnchor: [20, 20] });
-
     function submitOrder() {
         const details = document.getElementById('orderDetails').value;
-        if(!details) return alert("الرجاء كتابة تفاصيل الطلب");
+        if(!details) return alert("اكتب التفاصيل");
+        const btn = document.getElementById('sBtn');
+        btn.disabled = true; btn.innerText = "جاري التحويل...";
         
-        // اختيار الزر يدوياً لضمان العمل على كل المتصفحات
-        const btn = document.querySelector('button[onclick="submitOrder()"]');
-        const originalText = btn.innerText;
-        btn.innerHTML = '<i class="fa-solid fa-rocket"></i> جاري التحويل...'; 
-        btn.disabled = true;
-
-        const instantOrderId = "NWN-" + Math.floor(Math.random() * 100000);
-        
-        // إرسال الطلب في الخلفية
-        fetch(API_URL, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 
-                'action': 'create_order', 
-                'customerPhone': myPhone, 
-                'details': details,
-                'orderId': instantOrderId 
-            }),
-            keepalive: true 
+        const orderId = "NWN-" + Math.floor(Math.random() * 100000);
+        fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({'action': 'create_order', 'customerPhone': 'عميل', 'details': details, 'orderId': orderId}),
+            keepalive: true
         });
 
-        // تحديث الواجهة والتحويل للواتساب فوراً
-        document.getElementById('trackId').value = instantOrderId;
-        document.getElementById('orderDetails').value = '';
-        
-        const msg = encodeURIComponent(`🟢 مرحباً نعاون، لدي طلب توصيل جديد!\n\n📞 رقمي: *${myPhone}*\n🔖 رقم الطلب: *${instantOrderId}*\n📦 التفاصيل:\n${details}\n\nأرجو إسناده لأقرب مندوب 🛵.`);
-        
-        // تأخير بسيط لإعادة الزر ثم التحويل
-        setTimeout(() => {
-            window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
-        }, 100);
-    }
-
-    function startLiveTracking() {
-        const orderId = document.getElementById('trackId').value;
-        if(!orderId) return alert("أدخل رقم الطلب");
-        document.getElementById('trackResult').style.display = 'block';
-        if(trackingInterval) clearInterval(trackingInterval);
-        fetchLocation(orderId);
-        trackingInterval = setInterval(() => fetchLocation(orderId), 15000);
-    }
-
-    function fetchLocation(orderId) {
-        fetch(API_URL + "?action=track_order&orderId=" + orderId).then(res => res.json()).then(data => {
-            if(data.status === "success") {
-                document.getElementById('resStatus').innerText = data.orderStatus;
-                document.getElementById('resName').innerText = data.driverName || 'بانتظار الإدارة...';
-                if(data.orderStatus === "تم التوصيل") {
-                    document.getElementById('resStatus').className = "status-badge status-green";
-                    clearInterval(trackingInterval);
-                }
-                if(data.lat && data.lng) {
-                    const latLng = [parseFloat(data.lat), parseFloat(data.lng)];
-                    if(!driverMarker) { driverMarker = L.marker(latLng, {icon: carIcon}).addTo(map).bindPopup("المندوب"); map.setView(latLng, 15); } 
-                    else { driverMarker.setLatLng(latLng); }
-                }
-            }
-        });
-    }
-
-    function sendNote() {
-        const orderId = document.getElementById('trackId').value;
-        const note = document.getElementById('customerNote').value;
-        if(!note) return;
-        fetch(API_URL, {
-            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'add_note', 'orderId': orderId, 'note': note })
-        }).then(() => { alert("تم الإرسال"); document.getElementById('customerNote').value = ''; });
+        const msg = encodeURIComponent(`🟢 طلب جديد من نعاون!\n🔖 رقم الطلب: ${orderId}\n📦 التفاصيل: ${details}`);
+        setTimeout(() => { window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`; }, 100);
     }
 </script>
 </body>
