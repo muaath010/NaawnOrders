@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>بوابة المندوب</title>
+    <title>نعاون - بوابة المندوب</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 <div class="navbar">
-    <h2><i class="fa-solid fa-motorcycle"></i> بوابة المندوب</h2>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="شعار نعاون">
+        <h2 style="margin:0; font-size:18px;">بوابة المندوب</h2>
+    </div>
     <span id="driverNameDisplay"></span>
 </div>
 
@@ -24,16 +27,14 @@
 </div>
 
 <script>
-    // ⚠️ ضع الرابط الخاص بك هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; 
+    // ⚠️ ضع رابط قاعدة البيانات هنا
+    const API_URL = "https://script.google.com/macros/s/AKfycbzYutd3iFBNyRC8LDssIsaD0vofoNSGTxyPSZwC6QXi28-Y8YHy8jpHVV-i4U9u_Irr/exec"; 
+    // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا
+    const ADMIN_PHONE = "96893516953"; 
     
     const myPhone = localStorage.getItem("driverPhone");
     const myName = localStorage.getItem("driverName");
     const myIdCard = localStorage.getItem("driverIdCard"); 
-    
-    // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا (مثال: 96899999999)
-    const ADMIN_PHONE = "96893516953"; 
-
     let currentOrders = [];
 
     if(!myPhone) window.location.href = "index.html";
@@ -66,12 +67,10 @@
         });
     }
 
-    // دالة استلام الطلب مع الحل الجذري للواتساب
     function acceptOrderAndNotify(orderId, btnElement) {
         const targetOrder = currentOrders.find(o => o.orderId === orderId);
         const orderDetails = targetOrder ? targetOrder.details : "غير محدد";
 
-        // تغيير شكل الزر أثناء التحميل
         const originalHtml = btnElement.innerHTML;
         btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الفتح...';
         btnElement.disabled = true;
@@ -81,18 +80,12 @@
             body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'المندوب في الطريق' })
         }).then(res => res.json()).then(data => {
             loadMyOrders(); 
-            
-            // تجهيز الرسالة
-            const msg = encodeURIComponent(`🟢 مرحباً إدارة ناوون،\nأنا المندوب: *${myName}*\nرقم البطاقة: *${myIdCard}*\nلقد قمت باستلام الطلب رقم: *${orderId}*\n\n📦 *تفاصيل الطلب:*\n${orderDetails}\n\nوأنا الآن في طريقي لتنفيذه 🛵.`);
-            
-            // فتح تطبيق الواتساب مباشرة في نفس الصفحة لتخطي حظر الهواتف
+            // تعديل الرسالة لتتوافق مع اسم نعاون
+            const msg = encodeURIComponent(`🟢 مرحباً إدارة نعاون،\nأنا المندوب: *${myName}*\nرقم البطاقة: *${myIdCard}*\nلقد قمت باستلام الطلب رقم: *${orderId}*\n\n📦 *تفاصيل الطلب:*\n${orderDetails}\n\nوأنا الآن في طريقي لتنفيذه 🛵.`);
             window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
-            
         }).catch(err => {
             alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
-            // إعادة الزر لحالته الطبيعية في حال الفشل
-            btnElement.innerHTML = originalHtml;
-            btnElement.disabled = false;
+            btnElement.innerHTML = originalHtml; btnElement.disabled = false;
         });
     }
 
@@ -114,7 +107,6 @@
             }, 30000);
         }
     }
-    
     window.onload = () => { loadMyOrders(); startTracking(); };
 </script>
 </body>
