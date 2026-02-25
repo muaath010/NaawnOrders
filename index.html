@@ -1,48 +1,95 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ناوون لخدمات التوصيل - الدخول</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; color: #64748b; }
+        .tab.active { color: #f59e0b; border-bottom: 3px solid #f59e0b; }
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+    </style>
 </head>
 <body>
+<div class="container" style="max-width: 400px; margin-top: 50px;">
+    <h2 style="text-align: center; color: #f59e0b;"><i class="fa-solid fa-motorcycle"></i> ناوون للتوصيل</h2>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('customer')">عميل</div>
+        <div class="tab" onclick="switchTab('driver')">مندوب</div>
+        <div class="tab" onclick="switchTab('admin')">إدارة</div>
+    </div>
 
-<div class="container">
-    <h1>ناوون لخدمات التوصيل</h1>
-    <h2>بوابة الدخول</h2>
-    
-    <label>صفتك في المنصة:</label>
-    <select id="userRole">
-        <option value="customer">عميل (طلب توصيل)</option>
-        <option value="driver">مندوب توصيل</option>
-        <option value="admin">الإدارة</option>
-    </select>
-    
-    <label>رقم الهاتف:</label>
-    <input type="text" id="phoneNumber" placeholder="أدخل رقم هاتفك (للمندوب والعميل)">
-    
-    <button onclick="login()">دخول للمنصة</button>
+    <div id="customer" class="form-section active">
+        <input type="text" id="c_phone" placeholder="رقم هاتفك">
+        <button onclick="loginCustomer()">متابعة كعميل</button>
+    </div>
+
+    <div id="driver" class="form-section">
+        <input type="text" id="d_user" placeholder="اسم المستخدم">
+        <input type="text" id="d_id" placeholder="رقم البطاقة">
+        <input type="password" id="d_pass" placeholder="كلمة المرور">
+        <button onclick="loginDriver()">تسجيل الدخول للمندوب</button>
+    </div>
+
+    <div id="admin" class="form-section">
+        <input type="text" id="a_user" placeholder="اسم المستخدم">
+        <input type="password" id="a_pass" placeholder="كلمة المرور">
+        <button onclick="loginAdmin()">دخول الإدارة</button>
+    </div>
 </div>
 
 <script>
-    function login() {
-        const role = document.getElementById('userRole').value;
-        const phone = document.getElementById('phoneNumber').value;
-        
-        if (role !== 'admin' && !phone) {
-            alert('يرجى إدخال رقم الهاتف');
-            return;
-        }
+    const API_URL = "رابط_الـAPI_هنا"; // ⚠️ ضع الرابط هنا
 
-        // حفظ رقم الهاتف في المتصفح لاستخدامه في الصفحات الأخرى
-        localStorage.setItem("userPhone", phone);
-        
-        if (role === 'customer') window.location.href = 'customer.html';
-        else if (role === 'driver') window.location.href = 'driver.html';
-        else if (role === 'admin') window.location.href = 'admin.html';
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form-section').forEach(f => f.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    function loginCustomer() {
+        const phone = document.getElementById('c_phone').value;
+        if(!phone) return alert("أدخل رقم الهاتف");
+        localStorage.setItem("customerPhone", phone);
+        window.location.href = "customer.html";
+    }
+
+    function loginDriver() {
+        const user = document.getElementById('d_user').value;
+        const id = document.getElementById('d_id').value;
+        const pass = document.getElementById('d_pass').value;
+        event.target.innerText = "جاري التحقق...";
+
+        fetch(API_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'login_driver', 'username': user, 'idCard': id, 'password': pass })
+        }).then(res => res.json()).then(data => {
+            if(data.status === "success") {
+                localStorage.setItem("driverPhone", data.phone);
+                localStorage.setItem("driverName", data.name);
+                window.location.href = "driver.html";
+            } else { alert(data.message); event.target.innerText = "تسجيل الدخول للمندوب"; }
+        });
+    }
+
+    function loginAdmin() {
+        const user = document.getElementById('a_user').value;
+        const pass = document.getElementById('a_pass').value;
+        event.target.innerText = "جاري التحقق...";
+
+        fetch(API_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'login_admin', 'username': user, 'password': pass })
+        }).then(res => res.json()).then(data => {
+            if(data.status === "success") { window.location.href = "admin.html"; } 
+            else { alert(data.message); event.target.innerText = "دخول الإدارة"; }
+        });
     }
 </script>
-
 </body>
 </html>
