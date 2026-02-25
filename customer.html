@@ -4,39 +4,76 @@
     <meta charset="UTF-8">
     <title>ناوون - بوابة العميل</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </head>
 <body>
-<div class="container">
-    <h2>تقديم طلب توصيل جديد</h2>
-    
-    <label>تفاصيل الطلب وموقع الاستلام والتسليم:</label>
-    <textarea id="orderDetails" rows="4" placeholder="مثال: استلام طلبية من مطعم كذا وتوصيلها إلى حي كذا..."></textarea>
-    
-    <button onclick="submitOrder()">تأكيد وإرسال الطلب</button>
-    <br><br>
-    <button onclick="window.location.href='index.html'" style="background-color: #95a5a6;">عودة للرئيسية</button>
+<div class="navbar">
+    <h2><i class="fa-solid fa-motorcycle"></i> ناوون للتوصيل</h2>
+    <span>بوابة العملاء</span>
+</div>
+
+<div class="container grid-2">
+    <div class="card">
+        <h3><i class="fa-solid fa-box-open"></i> طلب توصيل جديد</h3>
+        <input type="text" id="custPhone" placeholder="رقم هاتفك">
+        <textarea id="orderDetails" rows="4" placeholder="تفاصيل الطلب وموقع الاستلام والتسليم..."></textarea>
+        <button onclick="submitOrder()">إرسال الطلب</button>
+    </div>
+
+    <div class="card">
+        <h3><i class="fa-solid fa-location-crosshairs"></i> تتبع طلبك</h3>
+        <input type="text" id="trackId" placeholder="أدخل رقم الطلب (مثال: NWN-123)">
+        <button onclick="trackMyOrder()" style="background: #3b82f6;">تتبع الآن</button>
+        
+        <div id="trackResult" style="display:none; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
+            <h4 id="resStatus" class="status-badge"></h4>
+            <p><strong>اسم المندوب:</strong> <span id="resName"></span></p>
+            <p><strong>رقم هاتف المندوب:</strong> <span id="resPhone"></span></p>
+        </div>
+        
+        <div id="map"></div>
+    </div>
 </div>
 
 <script>
-    // ⚠️ ضع الرابط الذي نسخته من جوجل سكريبت هنا
-    const API_URL = "https://script.google.com/macros/s/AKfycbzk9hOYCcfXaEg4JB-VVqxOdSaPiLkK8V0ZHP-A27XuSXtFKPQqm8BV3lk1fslGqoPB/exec"; 
-    const myPhone = localStorage.getItem("userPhone");
+    const API_URL = "ضع_رابط_جوجل_سكريبت_الجديد_هنا"; 
+
+    // تهيئة الخريطة وتوسيطها على ولاية عبري
+    var map = L.map('map').setView([23.2292, 56.5167], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    var marker = L.marker([23.2292, 56.5167]).addTo(map).bindPopup("منطقة التوصيل");
 
     function submitOrder() {
+        const phone = document.getElementById('custPhone').value;
         const details = document.getElementById('orderDetails').value;
-        if(!details) { alert("يرجى كتابة التفاصيل"); return; }
-        
-        document.querySelector('button').innerText = "جاري الإرسال...";
-        
         fetch(API_URL, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': myPhone, 'details': details })
-        }).then(res => res.json()).then(data => {
-            alert('تم تسجيل طلبك بنجاح! رقم الطلب: ' + data.orderId);
-            document.getElementById('orderDetails').value = '';
-            document.querySelector('button').innerText = "تأكيد وإرسال الطلب";
-        }).catch(err => alert("حدث خطأ في الاتصال"));
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': phone, 'details': details })
+        }).then(res => res.json()).then(data => alert('تم استلام طلبك! رقم التتبع الخاص بك هو: ' + data.orderId));
+    }
+
+    function trackMyOrder() {
+        const orderId = document.getElementById('trackId').value;
+        document.getElementById('trackResult').style.display = 'block';
+        document.getElementById('resStatus').innerText = "جاري البحث...";
+        
+        fetch(API_URL + "?action=track_order&orderId=" + orderId)
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === "success") {
+                document.getElementById('resStatus').innerText = data.orderStatus;
+                document.getElementById('resName').innerText = data.driverName;
+                document.getElementById('resPhone').innerText = data.driverPhone;
+                
+                // تغيير لون الحالة
+                if(data.orderStatus === "تم التوصيل") document.getElementById('resStatus').className = "status-badge status-completed";
+                else document.getElementById('resStatus').className = "status-badge status-waiting";
+            } else {
+                alert("رقم الطلب غير صحيح");
+                document.getElementById('trackResult').style.display = 'none';
+            }
+        });
     }
 </script>
 </body>
