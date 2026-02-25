@@ -19,7 +19,7 @@
         <i class="fa-solid fa-bell-ring"></i> تفعيل التحديث التلقائي والإشعارات الصوتية
     </button>
 
-    <button onclick="loadAdminData()"><i class="fa-solid fa-arrows-rotate"></i> تحديث يدوي</button>
+    <button onclick="loadAdminData()"><i class="fa-solid fa-arrows-rotate"></i> تحديث يدوي للبيانات</button>
 
     <h3 style="margin-top: 30px; color:var(--text-dark);"><i class="fa-solid fa-spinner fa-spin" style="color:var(--gold);"></i> الطلبات قيد الانتظار والنشطة</h3>
     <div id="activeOrdersList"></div>
@@ -31,48 +31,63 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; // ⚠️ لا تنسَ وضع رابطك
+    // ⚠️ ضع الرابط الخاص بك (API URL) هنا
+    const API_URL = "https://script.google.com/macros/s/AKfycbxTimWNoeU41e-gvAhJOonjVe6gmlg3hh9r6NIaFlSUUAS8beXHF-QV9Zw3msXwNli9/exec"; 
     
     let activeDrivers = [];
-    let previousOrdersCount = 0; // لحفظ عدد الطلبات السابقة ومقارنتها
+    let previousOrdersCount = 0;
     let isAutoRefreshActive = false;
     
-    // صوت التنبيه عند وصول طلب (يمكنك تغييره لاحقاً بأي رابط صوت)
+    // صوت التنبيه عند وصول طلب
     const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
-    // دالة تفعيل الإشعارات (يجب أن يضغط عليها المدير أول مرة)
+    // دالة تفعيل الإشعارات (النسخة المحسنة للهواتف لتخطي الحظر)
     function enableNotifications() {
-        Notification.requestPermission().then(permission => {
-            if(permission === "granted") {
-                document.getElementById('notifyBtn').style.display = 'none'; // إخفاء الزر بعد التفعيل
-                isAutoRefreshActive = true;
-                
-                // تشغيل الصوت بصمت لفك حظر المتصفح
-                alertSound.play().then(() => {
-                    alertSound.pause();
-                    alertSound.currentTime = 0;
-                }).catch(err => console.log("تم تفعيل الصوت"));
+        // 1. تشغيل الصوت فوراً لفك حظر المتصفح الصارم
+        alertSound.play().then(() => {
+            alertSound.pause();
+            alertSound.currentTime = 0;
+        }).catch(err => console.log("المتصفح يحظر الصوتيات مؤقتاً"));
 
-                alert("✅ تم تفعيل الإشعارات الصوتية والتحديث التلقائي بنجاح! سيتم فحص الطلبات كل 20 ثانية.");
-                
-                loadAdminData(); // تحميل أولي
-                setInterval(checkNewOrdersInBackground, 20000); // فحص كل 20 ثانية
-            } else {
-                alert("❌ يرجى السماح بعرض الإشعارات من إعدادات المتصفح لكي تعمل الميزة.");
-            }
-        });
+        // إخفاء الزر بمجرد الضغط عليه
+        document.getElementById('notifyBtn').style.display = 'none'; 
+        isAutoRefreshActive = true;
+
+        // 2. التحقق مما إذا كان المتصفح يدعم الإشعارات المنبثقة
+        if (!("Notification" in window)) {
+            alert("⚠️ متصفحك الحالي لا يدعم الإشعارات المنبثقة. لكن لا تقلق، التحديث التلقائي ورنة الصوت سيعملان بصمت!");
+            startAutoRefresh();
+        } else {
+            Notification.requestPermission().then(permission => {
+                if(permission === "granted") {
+                    alert("✅ تم تفعيل الإشعارات الصوتية والتحديث التلقائي بنجاح!");
+                } else {
+                    alert("❌ لقد رفضت صلاحية الإشعارات المنبثقة. التحديث التلقائي سيعمل بصمت.");
+                }
+                startAutoRefresh();
+            }).catch(err => {
+                alert("تم تفعيل التحديث التلقائي بنجاح!");
+                startAutoRefresh();
+            });
+        }
     }
 
-    // الفحص في الخلفية بدون تغيير شكل الصفحة لكي لا يزعج الإدارة
+    // دالة بدء التحديث
+    function startAutoRefresh() {
+        loadAdminData(); // تحميل أولي للبيانات
+        setInterval(checkNewOrdersInBackground, 20000); // فحص كل 20 ثانية
+    }
+
+    // الفحص في الخلفية
     function checkNewOrdersInBackground() {
         fetch(API_URL + "?action=get_all_orders").then(res => res.json()).then(orders => {
             // إذا كان عدد الطلبات الجديدة أكبر من العدد القديم
             if(orders.length > previousOrdersCount && previousOrdersCount !== 0) {
                 // 1. تشغيل رنة التنبيه
-                alertSound.play().catch(e => console.log("خطأ في تشغيل الصوت"));
+                alertSound.play().catch(e => console.log("المتصفح منع تشغيل الصوت"));
                 
-                // 2. إرسال إشعار لشاشة الهاتف/الكمبيوتر
-                if(Notification.permission === "granted") {
+                // 2. إرسال إشعار لشاشة الهاتف (إذا كان مدعوماً ومسموحاً)
+                if("Notification" in window && Notification.permission === "granted") {
                     new Notification("ناوون للتوصيل 🚀", {
                         body: "يوجد طلب توصيل جديد بانتظار الإسناد للمندوب!",
                         icon: "https://cdn-icons-png.flaticon.com/512/3204/3204121.png"
@@ -80,16 +95,15 @@
                 }
             }
             
-            // تحديث العدد وتحديث القائمة الصامت
             previousOrdersCount = orders.length;
             fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
                 activeDrivers = drivers;
                 renderOrders(orders);
             });
-        }).catch(err => console.log("خطأ في جلب البيانات الخلفية"));
+        }).catch(err => console.log("جاري إعادة المحاولة..."));
     }
 
-    // دالة التحميل اليدوية (عند فتح الصفحة أو الضغط على زر التحديث)
+    // دالة التحميل اليدوية الأساسية
     function loadAdminData() {
         document.getElementById('activeOrdersList').innerHTML = '<div style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> جاري جلب البيانات...</div>';
         fetch(API_URL + "?action=get_active_drivers").then(res => res.json()).then(drivers => {
@@ -101,6 +115,7 @@
         });
     }
 
+    // دالة بناء الواجهة
     function renderOrders(orders) {
         let activeHtml = '', completedHtml = '';
         let driversOptions = '<option value="">اختر مندوباً متواجداً...</option>';
