@@ -2,51 +2,112 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نعاون - المندوب</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نعاون - بوابة المندوب</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 <div class="navbar">
     <div style="display: flex; align-items: center; gap: 10px;">
-        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo">
-        <h2 style="margin:0; font-size: 16px;">المندوب: <span id="dName"></span></h2>
+        <img src="https://img.remit.ee/api/file/BQACAgUAAyEGAASHRsPbAAERQANpnvj_AAG8qV7sGOoQYGaP5XpFHFUAAposAAK-s_lUrAzi0ByJX3E6BA.jpg" class="pulsing-logo" alt="شعار نعاون">
+        <h2 style="margin:0; font-size:18px;">بوابة المندوب</h2>
     </div>
+    <span id="driverNameDisplay"></span>
 </div>
+
 <div class="container">
-    <div id="ordersList">جاري التحميل...</div>
+    <div class="card" style="text-align:center; border-color:var(--gold);">
+        <i class="fa-solid fa-satellite-dish" style="color:var(--gold); font-size:24px;"></i>
+        <p style="margin:5px 0 0 0; font-weight:bold;">نظام التتبع (GPS) يعمل بانتظام</p>
+    </div>
+
+    <h3 style="color: var(--gold);"><i class="fa-solid fa-clipboard-list"></i> الطلبات المسندة إليك:</h3>
+    <div id="myOrdersList">جاري التحميل...</div>
 </div>
+
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwmJKbtJ8shNL2a1epk1KVcdP_WNw37MMHsK-eGPDjlr_oj--vwLZmTnWFHh-7xVOcZ/exec"; 
+    // ⚠️ ضع رابط قاعدة البيانات هنا
+    const API_URL = "ضع_رابط_جوجل_سكريبت_هنا"; 
+    // ⚠️ ضع رقم الواتساب الخاص بالإدارة هنا
+    const ADMIN_PHONE = "96800000000"; 
+    
     const myPhone = localStorage.getItem("driverPhone");
-    document.getElementById('dName').innerText = localStorage.getItem("driverName");
+    const myName = localStorage.getItem("driverName");
+    const myIdCard = localStorage.getItem("driverIdCard"); 
+    let currentOrders = [];
 
-    async function loadOrders() {
-        const res = await fetch(API_URL + "?action=get_driver_orders&driverPhone=" + myPhone);
-        const data = await res.json();
-        let html = '';
-        data.forEach(o => {
-            if(o.status !== 'تم التوصيل') {
-                html += `<div class="card">
-                    <h3>طلب #${o.orderId}</h3>
-                    <p>${o.details}</p>
-                    <button onclick="updateStatus('${o.orderId}', this)" style="background:#2ecc71;">تأكيد التسليم</button>
-                </div>`;
-            }
+    if(!myPhone) window.location.href = "index.html";
+    document.getElementById('driverNameDisplay').innerText = myName;
+
+    function loadMyOrders() {
+        fetch(API_URL + "?action=get_driver_orders&driverPhone=" + myPhone).then(res => res.json()).then(data => {
+            currentOrders = data;
+            let html = '';
+            data.forEach(order => {
+                if(order.status !== 'تم التوصيل') {
+                    let notesHtml = order.notes ? `<div style="background:#FFF9E6; padding:10px; border-radius:8px; margin-top:10px; border:1px dashed var(--gold); font-size:14px;"><i class="fa-solid fa-comment-dots" style="color:var(--gold);"></i> <strong>ملاحظات الطلب:</strong><br>${order.notes.replace(/\n/g, '<br>')}</div>` : '';
+
+                    html += `
+                    <div class="card">
+                        <span class="status-badge status-gold">${order.status}</span>
+                        <h3 style="margin-top:15px;">طلب #${order.orderId}</h3>
+                        <p><i class="fa-solid fa-phone" style="color:var(--text-light);"></i> <strong>العميل:</strong> <a href="tel:${order.customerPhone}" style="color:var(--gold); text-decoration:none;">${order.customerPhone}</a></p>
+                        <p><i class="fa-solid fa-map-location-dot" style="color:var(--text-light);"></i> <strong>التفاصيل:</strong> ${order.details}</p>
+                        ${notesHtml}
+                        
+                        <div class="grid-2" style="margin-top:15px;">
+                            <button onclick="acceptOrderAndNotify('${order.orderId}', this)"><i class="fa-solid fa-check"></i> استلام وإشعار الإدارة</button>
+                            <button onclick="updateStatus('${order.orderId}', 'تم التوصيل')" style="background:#2ecc71;"><i class="fa-solid fa-flag-checkered"></i> تأكيد التسليم للعميل</button>
+                        </div>
+                    </div>`;
+                }
+            });
+            document.getElementById('myOrdersList').innerHTML = html || '<div class="card" style="text-align:center;">لا توجد طلبات جديدة.</div>';
         });
-        document.getElementById('ordersList').innerHTML = html || 'لا توجد طلبات.';
     }
 
-    async function updateStatus(id, btn) {
-        if(!confirm("تأكيد التسليم؟")) return;
-        btn.disabled = true; btn.innerText = "جاري الحفظ...";
-        const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({'action': 'update_status', 'orderId': id, 'status': 'تم التوصيل'})
+    function acceptOrderAndNotify(orderId, btnElement) {
+        const targetOrder = currentOrders.find(o => o.orderId === orderId);
+        const orderDetails = targetOrder ? targetOrder.details : "غير محدد";
+
+        const originalHtml = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الفتح...';
+        btnElement.disabled = true;
+
+        fetch(API_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': 'المندوب في الطريق' })
+        }).then(res => res.json()).then(data => {
+            loadMyOrders(); 
+            // تعديل الرسالة لتتوافق مع اسم نعاون
+            const msg = encodeURIComponent(`🟢 مرحباً إدارة نعاون،\nأنا المندوب: *${myName}*\nرقم البطاقة: *${myIdCard}*\nلقد قمت باستلام الطلب رقم: *${orderId}*\n\n📦 *تفاصيل الطلب:*\n${orderDetails}\n\nوأنا الآن في طريقي لتنفيذه 🛵.`);
+            window.location.href = `https://wa.me/${ADMIN_PHONE}?text=${msg}`;
+        }).catch(err => {
+            alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
+            btnElement.innerHTML = originalHtml; btnElement.disabled = false;
         });
-        const data = await res.json();
-        if(data.status === "success") { alert("تم!"); loadOrders(); }
     }
-    window.onload = loadOrders;
+
+    function updateStatus(orderId, newStatus) {
+        if(newStatus === 'تم التوصيل' && !confirm('هل قمت بتسليم الطلب للعميل فعلياً؟')) return;
+        fetch(API_URL, {
+            method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ 'action': 'update_status', 'orderId': orderId, 'status': newStatus })
+        }).then(res => res.json()).then(data => loadMyOrders());
+    }
+
+    function startTracking() {
+        if (navigator.geolocation) {
+            setInterval(() => {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ 'action': 'update_location', 'driverPhone': myPhone, 'lat': pos.coords.latitude, 'lng': pos.coords.longitude }) });
+                }, () => {}, { enableHighAccuracy: true });
+            }, 30000);
+        }
+    }
+    window.onload = () => { loadMyOrders(); startTracking(); };
 </script>
 </body>
 </html>
