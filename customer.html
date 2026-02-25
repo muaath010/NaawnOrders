@@ -1,35 +1,38 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <title>ناوون - بوابة العميل</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        #map { height: 300px; border-radius: 12px; margin-top: 15px; border: 2px solid #e2e8f0; z-index: 1;}
+    </style>
 </head>
 <body>
 <div class="navbar">
     <h2><i class="fa-solid fa-motorcycle"></i> ناوون للتوصيل</h2>
-    <span>بوابة العملاء</span>
+    <span style="font-size: 14px;">بوابة العملاء</span>
 </div>
 
-<div class="container grid-2">
+<div class="container" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+    
     <div class="card">
         <h3><i class="fa-solid fa-box-open"></i> طلب توصيل جديد</h3>
-        <input type="text" id="custPhone" placeholder="رقم هاتفك">
-        <textarea id="orderDetails" rows="4" placeholder="تفاصيل الطلب وموقع الاستلام والتسليم..."></textarea>
+        <textarea id="orderDetails" rows="3" placeholder="تفاصيل الطلب (من أين وإلى أين؟)"></textarea>
         <button onclick="submitOrder()">إرسال الطلب</button>
     </div>
 
     <div class="card">
-        <h3><i class="fa-solid fa-location-crosshairs"></i> تتبع طلبك</h3>
-        <input type="text" id="trackId" placeholder="أدخل رقم الطلب (مثال: NWN-123)">
-        <button onclick="trackMyOrder()" style="background: #3b82f6;">تتبع الآن</button>
+        <h3><i class="fa-solid fa-location-crosshairs"></i> التتبع المباشر</h3>
+        <input type="text" id="trackId" placeholder="أدخل رقم الطلب هنا (مثال: NWN-1234)">
+        <button onclick="startLiveTracking()" style="background: #3b82f6;">بدء التتبع</button>
         
-        <div id="trackResult" style="display:none; margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 8px;">
-            <h4 id="resStatus" class="status-badge"></h4>
-            <p><strong>اسم المندوب:</strong> <span id="resName"></span></p>
-            <p><strong>رقم هاتف المندوب:</strong> <span id="resPhone"></span></p>
+        <div id="trackResult" style="display:none; margin-top: 15px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+            <p><strong>حالة الطلب:</strong> <span id="resStatus" class="status-badge" style="background:#f59e0b;"></span></p>
+            <p><strong>المندوب:</strong> <span id="resName"></span></p>
         </div>
         
         <div id="map"></div>
@@ -37,41 +40,74 @@
 </div>
 
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzcvnPtJDkmTANrU4Y6uDF8nY8-M6dMbocJaSK45EUFdakpttfr4i4KK5GHIidVqhRZ/exec"; 
+    const API_URL = "رابط_الـAPI_هنا"; // ⚠️ ضع الرابط هنا
+    const myPhone = localStorage.getItem("customerPhone");
 
-    // تهيئة الخريطة وتوسيطها على ولاية عبري
-    var map = L.map('map').setView([23.2292, 56.5167], 13);
+    // تهيئة الخريطة
+    let map = L.map('map').setView([23.2292, 56.5167], 13); // إحداثيات افتراضية
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    var marker = L.marker([23.2292, 56.5167]).addTo(map).bindPopup("منطقة التوصيل");
+    let driverMarker;
+    let trackingInterval;
+
+    // أيقونة سيارة المندوب المخصصة
+    let carIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3204/3204121.png',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+    });
 
     function submitOrder() {
-        const phone = document.getElementById('custPhone').value;
         const details = document.getElementById('orderDetails').value;
+        if(!details) return alert("اكتب التفاصيل");
+        
         fetch(API_URL, {
             method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': phone, 'details': details })
-        }).then(res => res.json()).then(data => alert('تم استلام طلبك! رقم التتبع الخاص بك هو: ' + data.orderId));
+            body: new URLSearchParams({ 'action': 'create_order', 'customerPhone': myPhone || 'زائر', 'details': details })
+        }).then(res => res.json()).then(data => {
+            alert('تم استلام طلبك! رقم التتبع: ' + data.orderId);
+            document.getElementById('trackId').value = data.orderId;
+        });
     }
 
-    function trackMyOrder() {
+    function startLiveTracking() {
         const orderId = document.getElementById('trackId').value;
-        document.getElementById('trackResult').style.display = 'block';
-        document.getElementById('resStatus').innerText = "جاري البحث...";
+        if(!orderId) return alert("أدخل رقم الطلب");
         
+        document.getElementById('trackResult').style.display = 'block';
+        if(trackingInterval) clearInterval(trackingInterval); // إيقاف أي تتبع سابق
+
+        // جلب الموقع فوراً ثم كل 15 ثانية
+        fetchLocation(orderId);
+        trackingInterval = setInterval(() => fetchLocation(orderId), 15000);
+    }
+
+    function fetchLocation(orderId) {
         fetch(API_URL + "?action=track_order&orderId=" + orderId)
         .then(res => res.json())
         .then(data => {
             if(data.status === "success") {
                 document.getElementById('resStatus').innerText = data.orderStatus;
-                document.getElementById('resName').innerText = data.driverName;
-                document.getElementById('resPhone').innerText = data.driverPhone;
+                document.getElementById('resName').innerText = data.driverName || 'لم يتم التعيين';
                 
-                // تغيير لون الحالة
-                if(data.orderStatus === "تم التوصيل") document.getElementById('resStatus').className = "status-badge status-completed";
-                else document.getElementById('resStatus').className = "status-badge status-waiting";
+                if(data.orderStatus === "تم التوصيل") {
+                    document.getElementById('resStatus').style.background = "#10b981";
+                    clearInterval(trackingInterval); // إيقاف التتبع عند الانتهاء
+                }
+
+                // تحديث الخريطة إذا كانت هناك إحداثيات للمندوب
+                if(data.lat && data.lng) {
+                    const latLng = [parseFloat(data.lat), parseFloat(data.lng)];
+                    
+                    if(!driverMarker) {
+                        driverMarker = L.marker(latLng, {icon: carIcon}).addTo(map).bindPopup("المندوب هنا!");
+                        map.setView(latLng, 15);
+                    } else {
+                        driverMarker.setLatLng(latLng); // تحريك السيارة بنعومة
+                    }
+                }
             } else {
                 alert("رقم الطلب غير صحيح");
-                document.getElementById('trackResult').style.display = 'none';
+                clearInterval(trackingInterval);
             }
         });
     }
